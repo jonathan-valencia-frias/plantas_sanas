@@ -41,11 +41,13 @@ test_ds = preprocess_input(test_ds)
 data_augmentation = tf.keras.Sequential([
   layers.RandomFlip("horizontal_and_vertical"),
   layers.RandomRotation(0.2),
+  layers.RandomZoom(0.2),
+  layers.RandomContrast(0.2),
 ])
 
 flatten_layer = layers.Flatten()
-dense_layer_1 = layers.Dense(50, activation='relu')
-dense_layer_2 = layers.Dense(20, activation='relu')
+dense_layer_1 = layers.Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01))
+dense_layer_2 = layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01))
 prediction_layer = layers.Dense(5, activation='softmax')
 
 
@@ -54,6 +56,7 @@ model = models.Sequential([
     base_model,
     flatten_layer,
     dense_layer_1,
+    layers.Dropout(0.5),  # Regularización Dropout
     dense_layer_2,
     prediction_layer
 ])
