@@ -7,8 +7,12 @@ from keras.callbacks import EarlyStopping
 import pandas as pd
 from tensorflow.keras.preprocessing import image
 import numpy as np
+# import matplotlib.pyplot as plt
+# import seaborn as sns
+# from sklearn.metrics import confusion_matrix
 
-Tamaño_imagen = 150
+Tamaño_imagen = 250
+
 
 label_mapping = {
     'tomate_Clavivacter': 0,
@@ -27,7 +31,7 @@ df = pd.read_csv("enfermedades_dataset.csv")
 total_samples = len(df)
 
 # Definir el tamaño del conjunto de prueba
-test_size = int(0.2 * total_samples)
+test_size = int(0.1 * total_samples)
 
 # Mezclar aleatoriamente las filas del DataFrame
 df = df.sample(frac=1, random_state=42)
@@ -79,11 +83,6 @@ num_classes = len(label_mapping)
 train_labels = to_categorical(train_labels_numeric, num_classes=num_classes)
 test_labels = to_categorical(test_labels_numeric, num_classes=num_classes)
 
-# Definir el modelo base (VGG16)
-base_model = VGG16(weights="imagenet", include_top=False, input_shape=(Tamaño_imagen, Tamaño_imagen, 3))
-
-base_model.trainable = False
-
 train_images = np.array(train_images)
 test_images = np.array(test_images)
 
@@ -91,38 +90,56 @@ test_images = np.array(test_images)
 train_images = preprocess_input(train_images)
 test_images = preprocess_input(test_images)
 
+# Definir el modelo base (VGG16)
+base_model = VGG16(weights="imagenet", include_top=False, input_shape=(Tamaño_imagen, Tamaño_imagen, 3))
+
+base_model.trainable = False
+
 ## Data augmentation
 data_augmentation = tf.keras.Sequential([
-  layers.RandomFlip("horizontal_and_vertical"),
+#   layers.RandomFlip("horizontal_and_vertical"),
   layers.RandomRotation(0.2),
   layers.RandomZoom(0.2),
   layers.RandomContrast(0.2),
 ])
 
 flatten_layer = layers.Flatten()
-dense_layer_1 = layers.Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01))
-dense_layer_2 = layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01))
-prediction_layer = layers.Dense(7, activation='softmax')
 
+# Configuración de las capas densas según 'depths'
+dense_units = [8192, 4096]  # Ajusta esta lista según 'dense_units'
+depths = [2, 1, 3]  # Ajusta esta lista según 'depths'
+
+dense_layers = []  # Lista para almacenar las capas densas
+
+for depth in depths:
+    for units in dense_units:
+        dense_layer = layers.Dense(units, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01))
+        dense_layers.append(dense_layer)
+
+prediction_layer = layers.Dense(7, activation='softmax')
 
 model = models.Sequential([
     data_augmentation,
     base_model,
     flatten_layer,
-    dense_layer_1,
-    layers.Dropout(0.5),
-    dense_layer_2,
+    *dense_layers,  # Agrega todas las capas densas
     prediction_layer
 ])
 
+# Ejemplo con RMSprop
+optimizer = tf.keras.optimizers.RMSprop(learning_rate=0.001)
+custom_optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+
 model.compile(
-    optimizer='adam',
+    optimizer=custom_optimizer,
     loss='categorical_crossentropy',
     metrics=['accuracy'],
 )
 
-es = EarlyStopping(monitor='val_accuracy', mode='max', patience=5,  restore_best_weights=True)
+es = EarlyStopping(monitor='loss', mode='min', patience=10, restore_best_weights=True)
 
-model.fit(train_images, train_labels, epochs=50, validation_split=0.2, batch_size=32, callbacks=[es])
+model.fit(train_images, train_labels, epochs=10, validation_split=0.3, batch_size=8, callbacks=[es])
 
+test_loss, test_accuracy = model.evaluate(test_images, test_labels)
+print("Test Accuracy:", test_accuracy)
 

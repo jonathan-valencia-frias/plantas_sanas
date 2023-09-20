@@ -2,6 +2,7 @@ import os
 import pandas as pd
 
 # Rutas de las carpetas
+# base_folder = "/mnt/c/Users/jonat/Desktop/modular/Imagenes"
 base_folder = "C:\\Users\\jonat\\Desktop\\modular\\Imagenes"
 enfermedades_tomates = ["Clavivacter", "Fulvia", "Leveilula", "Pseudomonas", "Xanthomonas"]
 enfermedades_pepinos = ["Corynespora", "Mildew"]
